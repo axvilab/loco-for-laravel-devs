@@ -15,7 +15,10 @@ use std::path::Path;
 
 #[allow(unused_imports)]
 use crate::{
-    controllers, initializers, models::_entities::users, tasks, workers::downloader::DownloadWorker,
+    controllers, initializers,
+    models::_entities::{posts, users},
+    tasks,
+    workers::downloader::DownloadWorker,
 };
 
 pub struct App;
@@ -66,6 +69,8 @@ impl Hooks for App {
         tasks.register(tasks::user_delete::UserDelete);
     }
     async fn truncate(ctx: &AppContext) -> Result<()> {
+        // children before parents once foreign keys exist
+        truncate_table(&ctx.db, posts::Entity).await?;
         truncate_table(&ctx.db, users::Entity).await?;
         Ok(())
     }
