@@ -1,0 +1,10 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}{% if is_edit %}Edit post{% else %}New post{% endif %} · Admin{% endblock title %}
+{% block head %}{% include "admin/_htmx.html" %}{% endblock head %}
+
+{% block content %}
+<p><a href="/admin">&larr; Back to posts</a></p>
+<h1>{% if is_edit %}Edit post{% else %}New post{% endif %}</h1>
+{% include "admin/_form.html" %}
+{% endblock content %}

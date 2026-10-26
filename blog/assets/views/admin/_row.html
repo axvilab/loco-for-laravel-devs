@@ -1,0 +1,17 @@
+<tr id="post-{{ post.id }}">
+  <td><a href="/admin/posts/{{ post.id }}/edit">{{ post.title }}</a></td>
+  <td><span class="meta">{{ post.status }}</span></td>
+  <td class="actions">
+    <a href="{{ post.url }}">View</a>
+    <form method="post" action="/admin/posts/{{ post.id }}/publish" class="inline"
+          hx-post="/admin/posts/{{ post.id }}/publish" hx-target="closest tr" hx-swap="outerHTML">
+      <button class="secondary" type="submit">{% if post.is_live %}Unpublish{% else %}Publish{% endif %}</button>
+    </form>
+    <form method="post" action="/admin/posts/{{ post.id }}/delete" class="inline"
+          hx-delete="/admin/posts/{{ post.id }}" hx-target="closest tr" hx-swap="outerHTML"
+          hx-confirm="Delete “{{ post.title }}”?">
+      <button class="danger" type="submit">Delete</button>
+    </form>
+  </td>
+</tr>
+{% if oob_flash is defined %}<div id="flash" class="flash ok" role="status" hx-swap-oob="true">{{ oob_flash }}</div>{% endif %}

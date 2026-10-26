@@ -1,0 +1,37 @@
+<form id="post-form" method="post" action="{{ action }}" novalidate
+      {% if is_edit %}hx-put="{{ action }}"{% else %}hx-post="{{ action }}"{% endif %}
+      hx-target="this" hx-swap="outerHTML">
+  {% if has_errors %}<div class="flash err" role="alert">Please fix the errors below.</div>{% endif %}
+
+  <div class="field {% if errors.title %}has-error{% endif %}">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="{{ form.title }}">
+    {% if errors.title %}<p class="error">{{ errors.title }}</p>{% endif %}
+  </div>
+
+  <div class="field {% if errors.slug %}has-error{% endif %}">
+    <label for="slug">Slug <span class="meta">(leave empty to derive from the title)</span></label>
+    <input type="text" id="slug" name="slug" value="{{ form.slug }}">
+    {% if errors.slug %}<p class="error">{{ errors.slug }}</p>{% endif %}
+  </div>
+
+  <div class="field {% if errors.body %}has-error{% endif %}">
+    <label for="body">Body <span class="meta">(Markdown)</span></label>
+    <textarea id="body" name="body">{{ form.body }}</textarea>
+    {% if errors.body %}<p class="error">{{ errors.body }}</p>{% endif %}
+  </div>
+
+  <div class="field {% if errors.tags %}has-error{% endif %}">
+    <label for="tags">Tags <span class="meta">(comma separated)</span></label>
+    <input type="text" id="tags" name="tags" value="{{ form.tags }}">
+    {% if errors.tags %}<p class="error">{{ errors.tags }}</p>{% endif %}
+  </div>
+
+  <div class="field {% if errors.published_at %}has-error{% endif %}">
+    <label for="published_at">Publish at <span class="meta">(UTC; empty = draft)</span></label>
+    <input type="datetime-local" id="published_at" name="published_at" value="{{ form.published_at }}">
+    {% if errors.published_at %}<p class="error">{{ errors.published_at }}</p>{% endif %}
+  </div>
+
+  <button type="submit">{% if is_edit %}Save{% else %}Create{% endif %}</button>
+</form>

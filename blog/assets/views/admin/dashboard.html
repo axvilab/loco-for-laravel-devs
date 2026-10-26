@@ -1,16 +1,28 @@
 {% extends "layouts/base.html" %}
 
 {% block title %}Admin · Loco Blog{% endblock title %}
+{% block head %}{% include "admin/_htmx.html" %}{% endblock head %}
 
 {% block content %}
-<h1>Admin</h1>
-<p class="meta">Signed in as {{ user.name }} &lt;{{ user.email }}&gt;</p>
-<form method="post" action="/logout" class="inline"><button class="secondary" type="submit">Log out</button></form>
+<div class="admin-head">
+  <h1>Your posts</h1>
+  <a class="button" href="/admin/posts/new">New post</a>
+</div>
+<p class="meta">
+  Signed in as {{ user.name }} &lt;{{ user.email }}&gt; &middot;
+  <form method="post" action="/logout" class="inline"><button class="secondary" type="submit">Log out</button></form>
+</p>
 
-<h2>Your posts</h2>
-{% for post in posts %}
-<p><a href="{{ post.url }}">{{ post.title }}</a> <span class="meta">({{ post.status }})</span></p>
-{% else %}
-<p class="empty">You haven't written anything yet.</p>
-{% endfor %}
+<div id="flash" class="flash ok" role="status" {% if not flash %}hidden{% endif %}>{{ flash or "" }}</div>
+
+<table class="admin">
+  <thead><tr><th>Title</th><th>Status</th><th></th></tr></thead>
+  <tbody>
+    {% for post in posts %}
+      {% include "admin/_row.html" %}
+    {% else %}
+      <tr><td colspan="3" class="empty">You haven't written anything yet.</td></tr>
+    {% endfor %}
+  </tbody>
+</table>
 {% endblock content %}

@@ -48,3 +48,5 @@ table.admin { width: 100%; border-collapse: collapse; }
 table.admin th, table.admin td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .actions { display: flex; gap: 8px; }
 .inline { display: inline; }
+.admin-head { display: flex; justify-content: space-between; align-items: center; }
+[hidden] { display: none !important; }

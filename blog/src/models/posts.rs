@@ -182,6 +182,47 @@ async fn unique_slug<C: ConnectionTrait>(
     }
 }
 
+/// A one-field `ModelError::Validation`, same shape the `validator` crate
+/// produces, so forms render it like any other field error.
+#[must_use]
+pub fn field_error(field: &str, code: &str, message: &str) -> ModelError {
+    let mut errors = std::collections::BTreeMap::new();
+    errors.insert(
+        field.to_string(),
+        vec![validation::ValidationError {
+            code: code.to_string(),
+            message: Some(message.to_string()),
+            params: std::collections::HashMap::new(),
+        }],
+    );
+    ModelError::Validation(validation::ModelValidationErrors { errors })
+}
+
+/// An explicitly chosen slug must be free. (Derived slugs get `-2`, `-3`...
+/// in `before_save`; a slug the user typed is respected or rejected.)
+async fn ensure_slug_free(
+    db: &DatabaseConnection,
+    slug: &str,
+    except_id: Option<i64>,
+) -> ModelResult<()> {
+    let slug = slug.trim();
+    if slug.is_empty() {
+        return Ok(());
+    }
+    let mut q = Entity::find().filter(Column::Slug.eq(slug));
+    if let Some(id) = except_id {
+        q = q.filter(Column::Id.ne(id));
+    }
+    if q.one(db).await?.is_some() {
+        return Err(field_error(
+            "slug",
+            "taken",
+            "This slug is already used by another post.",
+        ));
+    }
+    Ok(())
+}
+
 impl PostParams {
     /// Validate *before* touching the DB so the caller gets
     /// `ModelError::Validation` (structured, per field) instead of the
@@ -378,6 +419,7 @@ impl Model {
     /// `ModelError::Validation` for bad input, DB errors otherwise.
     pub async fn create(db: &DatabaseConnection, params: &PostParams) -> ModelResult<Self> {
         params.validate_for_save()?;
+        ensure_slug_free(db, &params.slug, None).await?;
         let txn = db.begin().await?;
         let mut item = ActiveModel {
             ..Default::default()
@@ -428,6 +470,34 @@ impl Model {
             .order_by_asc(tags::Column::Name)
             .all(db)
             .await?)
+    }
+
+    /// A post **owned by** `user_id`. Someone else's post is "not found"
+    /// (404), not "forbidden": we don't confirm that the id exists.
+    /// (Laravel: a Policy, or `$user->posts()->findOrFail($id)`.)
+    ///
+    /// # Errors
+    /// `ModelError::EntityNotFound`
+    pub async fn find_owned(db: &DatabaseConnection, id: i64, user_id: i64) -> ModelResult<Self> {
+        Entity::find_by_id(id)
+            .filter(Column::UserId.eq(user_id))
+            .one(db)
+            .await?
+            .ok_or(ModelError::EntityNotFound)
+    }
+
+    /// Tags as the comma-separated string the admin form edits.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn tag_list(&self, db: &DatabaseConnection) -> ModelResult<String> {
+        Ok(self
+            .tags(db)
+            .await?
+            .into_iter()
+            .map(|t| t.name)
+            .collect::<Vec<_>>()
+            .join(", "))
     }
 
     /// All posts by one author, newest first (drafts included).
@@ -509,6 +579,11 @@ impl ActiveModel {
         params: &PostParams,
     ) -> ModelResult<Model> {
         params.validate_for_save()?;
+        let id = match &self.id {
+            ActiveValue::Set(id) | ActiveValue::Unchanged(id) => Some(*id),
+            ActiveValue::NotSet => None,
+        };
+        ensure_slug_free(db, &params.slug, id).await?;
         params.apply(&mut self);
         let txn = db.begin().await?;
         let post = self.update(&txn).await?;
