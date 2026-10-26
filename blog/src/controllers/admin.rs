@@ -13,7 +13,15 @@ use crate::{
     controllers::session::CurrentUser,
     models::posts::{self, field_error, PostParams},
     views,
+    workers::process_post,
 };
+
+/// Background: render the HTML cache, reading time, notify subscribers.
+/// The HTTP response doesn't wait for any of it.
+async fn enqueue_processing(ctx: &AppContext, post: &posts::Model) -> Result<()> {
+    process_post::Worker::perform_later(ctx, process_post::WorkerArgs { post_id: post.id }).await?;
+    Ok(())
+}
 
 pub const FLASH_COOKIE: &str = "flash";
 
@@ -185,7 +193,10 @@ pub async fn create(
         Err(e) => return invalid(&v, &headers, &form, None, e),
     };
     match posts::Model::create(&ctx.db, &params).await {
-        Ok(post) => redirect_with_flash(&headers, "/admin", &format!("Created “{}”.", post.title)),
+        Ok(post) => {
+            enqueue_processing(&ctx, &post).await?;
+            redirect_with_flash(&headers, "/admin", &format!("Created “{}”.", post.title))
+        }
         Err(e) => invalid(&v, &headers, &form, None, e),
     }
 }
@@ -233,7 +244,10 @@ pub async fn update(
         .update_from(&ctx.db, &params)
         .await
     {
-        Ok(post) => redirect_with_flash(&headers, "/admin", &format!("Saved “{}”.", post.title)),
+        Ok(post) => {
+            enqueue_processing(&ctx, &post).await?;
+            redirect_with_flash(&headers, "/admin", &format!("Saved “{}”.", post.title))
+        }
         Err(e) => invalid(&v, &headers, &form, Some(&post), e),
     }
 }
@@ -276,6 +290,7 @@ pub async fn toggle_publish(
     } else {
         post.into_active_model().publish(&ctx.db).await?
     };
+    enqueue_processing(&ctx, &post).await?;
     let message = if post.published_at.is_some() {
         format!("Published “{}”.", post.title)
     } else {

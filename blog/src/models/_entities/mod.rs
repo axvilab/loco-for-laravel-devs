@@ -4,5 +4,6 @@ pub mod prelude;
 
 pub mod post_tags;
 pub mod posts;
+pub mod subscribers;
 pub mod tags;
 pub mod users;

@@ -50,3 +50,6 @@ table.admin th, table.admin td { text-align: left; padding: 8px 6px; border-bott
 .inline { display: inline; }
 .admin-head { display: flex; justify-content: space-between; align-items: center; }
 [hidden] { display: none !important; }
+.subscribe { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.subscribe label { font-weight: 600; width: 100%; }
+.subscribe input { flex: 1; min-width: 200px; padding: 7px; font: inherit; border: 1px solid var(--line); border-radius: 6px; }

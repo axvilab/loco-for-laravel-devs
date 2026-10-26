@@ -9,3 +9,5 @@ pub mod session;
 
 pub mod admin;
 mod uploads;
+
+pub mod subscriptions;

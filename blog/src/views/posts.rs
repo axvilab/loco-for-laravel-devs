@@ -28,6 +28,7 @@ fn tag_links(tags: &[tags::Model]) -> Vec<TagLink> {
 #[derive(Debug, Serialize)]
 pub struct PostSummary {
     pub author: Option<String>,
+    pub reading_minutes: Option<i64>,
     pub title: String,
     pub url: String,
     pub excerpt: String,
@@ -39,6 +40,7 @@ pub struct PostSummary {
 #[derive(Debug, Serialize)]
 pub struct PostDetail {
     pub author: Option<String>,
+    pub reading_minutes: Option<i64>,
     pub cover_url: Option<String>,
     pub title: String,
     pub url: String,
@@ -75,6 +77,7 @@ impl PostSummary {
         let (published_on, published_iso) = dates(post);
         Self {
             author: author.map(|u| u.name.clone()),
+            reading_minutes: post.reading_minutes,
             title: post.title.clone(),
             url: post_url(&post.slug),
             excerpt: post.excerpt(),
@@ -107,6 +110,7 @@ impl PostDetail {
         let (published_on, published_iso) = dates(post);
         Self {
             author: author.map(|u| u.name.clone()),
+            reading_minutes: post.reading_minutes,
             cover_url: post.cover_url(),
             title: post.title.clone(),
             url: post_url(&post.slug),

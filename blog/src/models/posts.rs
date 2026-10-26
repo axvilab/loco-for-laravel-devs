@@ -273,6 +273,9 @@ impl PostParams {
         item.slug = ActiveValue::Set(self.slug.trim().to_string());
         item.body = ActiveValue::Set(self.body.clone());
         item.published_at = ActiveValue::Set(self.published_at);
+        // derived fields are recomputed by the `process_post` worker
+        item.body_html = ActiveValue::Set(None);
+        item.reading_minutes = ActiveValue::Set(None);
         if let Some(user_id) = self.user_id {
             item.user_id = ActiveValue::Set(Some(user_id));
         }
@@ -342,10 +345,55 @@ pub fn excerpt(markdown: &str, max_chars: usize) -> String {
     format!("{}…", cut.trim_end_matches(|c: char| !c.is_alphanumeric()))
 }
 
+/// ~200 words per minute, at least 1.
+#[must_use]
+pub fn reading_minutes_for(markdown: &str) -> i64 {
+    let words = i64::try_from(markdown.split_whitespace().count()).unwrap_or(i64::MAX);
+    ((words + 199) / 200).max(1)
+}
+
 impl Model {
+    /// Cached HTML when the worker has rendered it, otherwise render now.
     #[must_use]
     pub fn body_html(&self) -> String {
-        render_markdown(&self.body)
+        self.body_html
+            .clone()
+            .unwrap_or_else(|| render_markdown(&self.body))
+    }
+
+    /// Recompute the derived columns (`body_html` cache, `reading_minutes`).
+    /// Called by the `process_post` worker after every save.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn refresh_derived(self, db: &DatabaseConnection) -> ModelResult<Self> {
+        let html = render_markdown(&self.body);
+        let minutes = reading_minutes_for(&self.body);
+        let mut item = self.into_active_model();
+        item.body_html = ActiveValue::Set(Some(html));
+        item.reading_minutes = ActiveValue::Set(Some(minutes));
+        Ok(item.update(db).await?)
+    }
+
+    /// Atomically mark the post as "subscribers notified".
+    ///
+    /// `UPDATE posts SET notified_at = now WHERE id = ? AND notified_at IS NULL`
+    /// — only one caller can win, so two workers (or a worker and the
+    /// scheduler) can never email subscribers twice. At-most-once delivery.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn claim_notification(db: &DatabaseConnection, id: i64) -> ModelResult<bool> {
+        // same type as the column (DateTime<FixedOffset>) so it round-trips
+        let now: DateTimeWithTimeZone = Utc::now().into();
+        let res = Entity::update_many()
+            .col_expr(Column::NotifiedAt, Expr::value(now))
+            .filter(Column::Id.eq(id))
+            .filter(Column::NotifiedAt.is_null())
+            .filter(Self::published_condition())
+            .exec(db)
+            .await?;
+        Ok(res.rows_affected == 1)
     }
 
     #[must_use]

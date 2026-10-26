@@ -17,7 +17,7 @@ use std::path::Path;
 #[allow(unused_imports)]
 use crate::{
     controllers, initializers,
-    models::_entities::{post_tags, posts, tags, users},
+    models::_entities::{post_tags, posts, subscribers, tags, users},
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -73,6 +73,7 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
+            .add_route(controllers::subscriptions::routes())
             .add_route(controllers::admin::routes())
             .add_route(controllers::session::routes())
             .add_route(controllers::tags::routes())
@@ -80,6 +81,9 @@ impl Hooks for App {
             .add_route(controllers::auth::routes())
     }
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
+        queue
+            .register(crate::workers::process_post::Worker::build(ctx))
+            .await?;
         queue.register(DownloadWorker::build(ctx)).await?;
         Ok(())
     }
@@ -92,6 +96,7 @@ impl Hooks for App {
     }
     async fn truncate(ctx: &AppContext) -> Result<()> {
         // children before parents once foreign keys exist
+        truncate_table(&ctx.db, subscribers::Entity).await?;
         truncate_table(&ctx.db, post_tags::Entity).await?;
         truncate_table(&ctx.db, tags::Entity).await?;
         truncate_table(&ctx.db, posts::Entity).await?;

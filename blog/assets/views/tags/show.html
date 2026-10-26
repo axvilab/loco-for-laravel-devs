@@ -8,7 +8,7 @@
 {% for post in posts %}
 <article class="post-card">
   <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
-  <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>{% if post.author %} <span class="meta">by {{ post.author }}</span>{% endif %}
+  <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>{% if post.author %} <span class="meta">by {{ post.author }}</span>{% endif %}{% if post.reading_minutes %} <span class="meta">· {{ post.reading_minutes }} min read</span>{% endif %}
   {% include "partials/tags.html" %}
   <p>{{ post.excerpt }}</p>
 </article>

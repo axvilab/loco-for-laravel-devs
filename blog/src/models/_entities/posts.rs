@@ -18,6 +18,10 @@ pub struct Model {
     pub published_at: Option<DateTimeWithTimeZone>,
     pub user_id: Option<i64>,
     pub cover_image: Option<String>,
+    pub reading_minutes: Option<i64>,
+    #[sea_orm(column_type = "Text", nullable)]
+    pub body_html: Option<String>,
+    pub notified_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

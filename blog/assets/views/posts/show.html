@@ -7,7 +7,7 @@
   {% if post.cover_url %}<img class="cover" src="{{ post.cover_url }}" alt="">{% endif %}
   <header>
     <h1>{{ post.title }}</h1>
-    <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>{% if post.author %} <span class="meta">by {{ post.author }}</span>{% endif %}
+    <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>{% if post.author %} <span class="meta">by {{ post.author }}</span>{% endif %}{% if post.reading_minutes %} <span class="meta">· {{ post.reading_minutes }} min read</span>{% endif %}
     {% include "partials/tags.html" %}
   </header>
   <div class="post-body">

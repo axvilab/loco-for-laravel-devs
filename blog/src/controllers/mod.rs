@@ -7,3 +7,5 @@ pub mod tags;
 pub mod session;
 
 pub mod admin;
+
+pub mod subscriptions;
