@@ -9,3 +9,5 @@ pub mod session;
 pub mod admin;
 
 pub mod subscriptions;
+
+pub mod feeds;

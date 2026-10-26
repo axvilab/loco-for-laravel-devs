@@ -423,6 +423,20 @@ impl Model {
         query::fetch_page(db, select, &pagination).await
     }
 
+    /// Newest `limit` published posts (feeds).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn latest_published(db: &DatabaseConnection, limit: u64) -> ModelResult<Vec<Self>> {
+        Ok(Entity::find()
+            .filter(Self::published_condition())
+            .order_by_desc(Column::PublishedAt)
+            .order_by_desc(Column::Id)
+            .limit(limit)
+            .all(db)
+            .await?)
+    }
+
     /// The one definition of "publicly visible". Every public query goes
     /// through [`Model::published_condition`] so this can change in one place.
     #[must_use]

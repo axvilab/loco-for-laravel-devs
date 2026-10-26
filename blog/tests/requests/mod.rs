@@ -11,3 +11,5 @@ pub mod admin;
 mod uploads;
 
 pub mod subscriptions;
+
+pub mod feeds;

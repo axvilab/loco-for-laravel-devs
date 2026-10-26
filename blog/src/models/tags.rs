@@ -89,6 +89,23 @@ impl Model {
         .await?)
     }
 
+    /// Tags that have at least one published post (sitemap, tag cloud).
+    /// `inner_join(posts)` follows the generated `via(post_tags)` relation:
+    /// two JOINs, one query.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn with_published_posts(db: &DatabaseConnection) -> ModelResult<Vec<Self>> {
+        use super::posts;
+        Ok(Entity::find()
+            .inner_join(posts::Entity)
+            .filter(posts::Model::published_condition())
+            .distinct()
+            .order_by_asc(Column::Name)
+            .all(db)
+            .await?)
+    }
+
     /// All tags, alphabetical.
     ///
     /// # Errors
