@@ -1,0 +1,90 @@
+# Production-like stack: Postgres + one-shot migrations + web + worker +
+# scheduler (+ Mailpit to catch mail). `cp .env.example .env`, fill it, then:
+#   docker compose up --build
+#   open http://localhost:5150  and the mail inbox at http://localhost:8025
+name: loco-blog
+
+x-app: &app
+  build: .
+  image: loco-blog:latest
+  env_file: .env
+  environment:
+    DATABASE_URL: postgres://blog:blog@postgres:5432/blog_production
+    QUEUE_URL: postgres://blog:blog@postgres:5432/blog_production
+    # migrations run once, in the `migrate` service — never in three
+    # processes at the same time
+    DB_AUTO_MIGRATE: "false"
+    MAILER_HOST: mailpit
+    MAILER_PORT: "1025"
+    MAILER_SECURE: "false"
+  restart: unless-stopped
+  volumes:
+    - uploads:/app/assets/static/uploads
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: blog
+      POSTGRES_PASSWORD: blog
+      POSTGRES_DB: blog_production
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blog -d blog_production"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "8025:8025"   # web inbox; SMTP on 1025 inside the network
+
+  migrate:
+    <<: *app
+    command: ["db", "migrate"]
+    restart: "no"
+    volumes: []
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  app:
+    <<: *app
+    command: ["start"]
+    ports:
+      - "5150:5150"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:5150/_ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    # SIGTERM -> axum graceful shutdown; give in-flight requests time
+    stop_grace_period: 30s
+
+  worker:
+    <<: *app
+    command: ["start", "--worker"]
+    depends_on:
+      # The first process to boot creates the `pg_loco_queue` table; two
+      # booting at once can race (`42P07 relation "pg_loco_queue" already
+      # exists`). Start the worker after the web app is healthy.
+      app:
+        condition: service_healthy
+    # the worker finishes its current job on SIGTERM; mail can be slow
+    stop_grace_period: 60s
+
+  scheduler:
+    <<: *app
+    command: ["scheduler", "--config", "config/scheduler.yaml"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+  uploads:

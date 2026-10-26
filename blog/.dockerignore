@@ -1,0 +1,12 @@
+target
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.github
+# local databases and uploads must never be baked into the image
+*.sqlite
+*.sqlite-*
+assets/static/uploads
+scheduler.txt
+.env

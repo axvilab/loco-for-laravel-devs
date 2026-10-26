@@ -59,7 +59,20 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: BackgroundAsync
+  # Web, worker and scheduler are separate processes (docker-compose.yml),
+  # so jobs must go through a persistent queue — Postgres, same database.
+  mode: BackgroundQueue
+
+queue:
+  kind: Postgres
+  uri: <%= get_env(name="QUEUE_URL") %>
+  dangerously_flush: false
+  max_connections: <%= get_env(name="QUEUE_MAX_CONNECTIONS", default="5") %>
+  min_connections: 1
+  connect_timeout: 500
+  idle_timeout: 500
+  poll_interval_sec: 1
+  num_workers: <%= get_env(name="QUEUE_NUM_WORKERS", default="2") %>
 
   
 
@@ -80,10 +93,18 @@ mailer:
     # SMTP server port
     port: <%= get_env(name="MAILER_PORT", default="587") %>
     # Use secure connection (SSL/TLS).
-    secure: true
+    # true = implicit TLS (465/587 with TLS); false for a local catcher like Mailpit
+    secure: <%= get_env(name="MAILER_SECURE", default="true") %>
+    # Only send SMTP AUTH when credentials are configured: an internal relay
+    # or a catcher (Mailpit) without AUTH fails with "No compatible
+    # authentication mechanism was found" if the block is always present.
+    # (Statement tags, i.e. percent-sign tags without "=", are part of Loco config
+    # templating since 1.1. Note: they are expanded even inside YAML comments!)
+    <% if get_env(name="MAILER_USER", default="") %>
     auth:
       user: <%= get_env(name="MAILER_USER") %>
       password: <%= get_env(name="MAILER_PASSWORD") %>
+    <% endif %>
     # Override the SMTP hello name (default is the machine's hostname)
     # hello_name:
 
@@ -114,6 +135,8 @@ database:
   # Convenient for single-instance deploys. Turn it off if you run more than
   # one instance or migrate as a separate release step, so instances do not
   # race to migrate the same database.
+  # In docker-compose a one-shot `migrate` service runs `db migrate`, and every
+  # long-running process sets DB_AUTO_MIGRATE=false (no three-way race at boot).
   auto_migrate: <%= get_env(name="DB_AUTO_MIGRATE", default="true") %>
   # Truncate database when application loaded. This is a dangerous operation, make sure that you using this flag only on dev environments or test mode
   dangerously_truncate: false
@@ -140,4 +163,4 @@ auth:
 settings:
   base_url: <%= get_env(name="BASE_URL") %>
   mail_from: <%= get_env(name="MAIL_FROM") %>
-  cookie_secure: true
+  cookie_secure: <%= get_env(name="COOKIE_SECURE", default="true") %>
