@@ -143,7 +143,7 @@ impl PaginationView {
     }
 }
 
-/// `GET /`
+/// `GET /` (rendered to a string so it can be cached)
 ///
 /// # Errors
 /// Template rendering errors.
@@ -152,10 +152,9 @@ pub fn index(
     page: &query::PageResponse<posts::Model>,
     tags: &[Vec<tags::Model>],
     authors: &[Option<users::Model>],
-) -> Result<Response> {
+) -> Result<String> {
     let posts = PostSummary::list(&page.page, tags, authors);
-    format::render().view(
-        v,
+    v.render(
         "posts/index.html",
         data!({
             "posts": posts,
@@ -173,9 +172,8 @@ pub fn show(
     post: &posts::Model,
     tags: &[tags::Model],
     author: Option<&users::Model>,
-) -> Result<Response> {
-    format::render().view(
-        v,
+) -> Result<String> {
+    v.render(
         "posts/show.html",
         data!({ "post": PostDetail::new(post, tags, author) }),
     )
@@ -191,10 +189,9 @@ pub fn tag(
     page: &query::PageResponse<posts::Model>,
     tags: &[Vec<tags::Model>],
     authors: &[Option<users::Model>],
-) -> Result<Response> {
+) -> Result<String> {
     let base = format!("/tags/{}", tag.slug);
-    format::render().view(
-        v,
+    v.render(
         "tags/show.html",
         data!({
             "tag": TagLink::from(tag),

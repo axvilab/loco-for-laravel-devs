@@ -47,6 +47,9 @@ impl BackgroundWorker<WorkerArgs> for Worker {
         };
 
         let post = post.refresh_derived(db).await?;
+        // body_html / reading time changed. Effective when the worker runs in
+        // the web process (`--server-and-worker`); otherwise the TTL bounds it.
+        crate::views::page_cache::invalidate(&self.ctx.cache).await;
         tracing::info!(
             post_id = post.id,
             minutes = post.reading_minutes,

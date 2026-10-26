@@ -63,6 +63,12 @@ queue:
 
   
 
+# Cache. Without this block ctx.cache is the `Null` driver: every write is
+# accepted and every read misses — silently.
+cache:
+  kind: InMem
+  max_capacity: 33554432 # bytes (32 MiB)
+
 # Mailer Configuration.
 mailer:
   # Sending mail in development needs something listening on the port below.

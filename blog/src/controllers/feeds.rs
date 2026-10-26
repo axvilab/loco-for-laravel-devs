@@ -5,7 +5,7 @@ use loco_rs::prelude::*;
 use crate::{
     data::settings::Settings,
     models::{posts, tags},
-    views,
+    views::{self, page_cache},
 };
 
 /// `GET /feed.xml` — RSS 2.0, newest 20 posts.
@@ -15,8 +15,12 @@ pub async fn rss(
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let settings = Settings::from_context(&ctx)?;
-    let posts = posts::Model::latest_published(&ctx.db, 20).await?;
-    views::feeds::rss(&v, &settings.base_url, &posts)
+    let body = page_cache::html(&ctx.cache, "feed.xml", async {
+        let posts = posts::Model::latest_published(&ctx.db, 20).await?;
+        views::feeds::rss(&v, &settings.base_url, &posts)
+    })
+    .await?;
+    views::feeds::xml("application/rss+xml; charset=utf-8", body)
 }
 
 /// `GET /sitemap.xml`
@@ -26,9 +30,13 @@ pub async fn sitemap(
     State(ctx): State<AppContext>,
 ) -> Result<Response> {
     let settings = Settings::from_context(&ctx)?;
-    let posts = posts::Model::latest_published(&ctx.db, 50_000).await?;
-    let tags = tags::Model::with_published_posts(&ctx.db).await?;
-    views::feeds::sitemap(&v, &settings.base_url, &posts, &tags)
+    let body = page_cache::html(&ctx.cache, "sitemap.xml", async {
+        let posts = posts::Model::latest_published(&ctx.db, 50_000).await?;
+        let tags = tags::Model::with_published_posts(&ctx.db).await?;
+        views::feeds::sitemap(&v, &settings.base_url, &posts, &tags)
+    })
+    .await?;
+    views::feeds::xml("application/xml; charset=utf-8", body)
 }
 
 /// `GET /robots.txt` — points crawlers at the sitemap, keeps them out of /admin.

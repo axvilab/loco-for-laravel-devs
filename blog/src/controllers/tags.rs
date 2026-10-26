@@ -3,7 +3,7 @@ use loco_rs::prelude::*;
 
 use crate::{
     models::{posts, tags},
-    views,
+    views::{self, page_cache},
 };
 
 /// `GET /tags/{slug}?page=N` — published posts carrying a tag.
@@ -19,10 +19,16 @@ pub async fn show(
         Err(ModelError::EntityNotFound) => return views::posts::not_found(&v),
         Err(e) => return Err(e.into()),
     };
-    let page = posts::Model::published_page_for_tag(&ctx.db, &tag, pagination.page).await?;
-    let post_tags = posts::Model::load_tags(&ctx.db, &page.page).await?;
-    let authors = posts::Model::load_authors(&ctx.db, &page.page).await?;
-    views::posts::tag(&v, &tag, &page, &post_tags, &authors)
+    let page_no = pagination.page.max(1);
+    let key = format!("tag:{}:{page_no}", tag.slug);
+    let html = page_cache::html(&ctx.cache, &key, async {
+        let page = posts::Model::published_page_for_tag(&ctx.db, &tag, page_no).await?;
+        let post_tags = posts::Model::load_tags(&ctx.db, &page.page).await?;
+        let authors = posts::Model::load_authors(&ctx.db, &page.page).await?;
+        views::posts::tag(&v, &tag, &page, &post_tags, &authors)
+    })
+    .await?;
+    page_cache::respond_html(&html)
 }
 
 pub fn routes() -> Routes {

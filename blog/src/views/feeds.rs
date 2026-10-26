@@ -22,8 +22,13 @@ pub struct SitemapUrl {
     pub lastmod: String,
 }
 
-fn xml(content_type: &'static str, body: String) -> Result<Response> {
+/// Wrap an XML body with its content type.
+///
+/// # Errors
+/// Response building errors.
+pub fn xml(content_type: &'static str, body: String) -> Result<Response> {
     format::render()
+        .etag(&crate::views::page_cache::etag_for(&body))?
         .header(header::CONTENT_TYPE, content_type)
         .header(header::CACHE_CONTROL, "public, max-age=300")
         .response()
@@ -33,7 +38,7 @@ fn xml(content_type: &'static str, body: String) -> Result<Response> {
 
 /// # Errors
 /// Template rendering errors.
-pub fn rss(v: &impl ViewRenderer, base_url: &str, posts: &[posts::Model]) -> Result<Response> {
+pub fn rss(v: &impl ViewRenderer, base_url: &str, posts: &[posts::Model]) -> Result<String> {
     let items: Vec<FeedItem> = posts
         .iter()
         .map(|p| FeedItem {
@@ -49,11 +54,10 @@ pub fn rss(v: &impl ViewRenderer, base_url: &str, posts: &[posts::Model]) -> Res
         .and_then(|p| p.published_at)
         .map(|d| d.to_rfc2822())
         .unwrap_or_default();
-    let body = v.render(
+    v.render(
         "feeds/rss.xml.html",
         data!({ "base_url": base_url, "items": items, "last_build": last_build }),
-    )?;
-    xml("application/rss+xml; charset=utf-8", body)
+    )
 }
 
 /// # Errors
@@ -63,7 +67,7 @@ pub fn sitemap(
     base_url: &str,
     posts: &[posts::Model],
     tags: &[tags::Model],
-) -> Result<Response> {
+) -> Result<String> {
     let newest = posts
         .first()
         .map(|p| p.updated_at.format("%Y-%m-%d").to_string())
@@ -80,6 +84,5 @@ pub fn sitemap(
         loc: format!("{base_url}/tags/{}", t.slug),
         lastmod: newest.clone(),
     }));
-    let body = v.render("feeds/sitemap.xml.html", data!({ "urls": urls }))?;
-    xml("application/xml; charset=utf-8", body)
+    v.render("feeds/sitemap.xml.html", data!({ "urls": urls }))
 }

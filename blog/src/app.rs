@@ -93,6 +93,7 @@ impl Hooks for App {
     fn register_tasks(tasks: &mut Tasks) {
         tasks.register(tasks::publish_scheduled::PublishScheduled);
         tasks.register(tasks::cleanup::Cleanup);
+        tasks.register(tasks::seed_demo::SeedDemo);
         // tasks-inject (do not remove)
         tasks.register(tasks::user_create::UserCreate);
         tasks.register(tasks::user_delete::UserDelete);

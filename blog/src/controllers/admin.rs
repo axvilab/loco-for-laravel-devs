@@ -265,6 +265,7 @@ pub async fn destroy(
     let title = post.title.clone();
     let post = post.remove_cover(&ctx.db, &ctx.storage).await?;
     post.delete(&ctx.db).await?;
+    views::page_cache::invalidate(&ctx.cache).await;
     let message = format!("Deleted “{title}”.");
     if is_htmx(&headers) {
         // Empty main content replaces the row (`hx-swap="outerHTML"`);
@@ -372,6 +373,7 @@ pub async fn delete_cover(
 ) -> Result<Response> {
     let post = posts::Model::find_owned(&ctx.db, id, user.id).await?;
     let post = post.remove_cover(&ctx.db, &ctx.storage).await?;
+    views::page_cache::invalidate(&ctx.cache).await;
     if is_htmx(&headers) {
         views::admin::cover(&v, &post, None, StatusCode::OK)
     } else {
