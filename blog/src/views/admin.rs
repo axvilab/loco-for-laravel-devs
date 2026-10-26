@@ -94,11 +94,12 @@ pub fn dashboard(
 pub fn post_form(
     v: &impl ViewRenderer,
     form: &PostForm,
-    post_id: Option<i64>,
+    post: Option<&posts::Model>,
     errors: &validation::ModelValidationErrors,
     fragment: bool,
     status: StatusCode,
 ) -> Result<Response> {
+    let post_id = post.map(|p| p.id);
     let template = if fragment {
         "admin/_form.html"
     } else {
@@ -118,7 +119,42 @@ pub fn post_form(
             "post_id": post_id,
             "action": action,
             "is_edit": post_id.is_some(),
+            "cover": post.map(|p| CoverView::new(p, None)),
         }),
+    )
+}
+
+#[derive(Debug, Serialize)]
+pub struct CoverView {
+    pub post_id: i64,
+    pub url: Option<String>,
+    pub error: Option<String>,
+}
+
+impl CoverView {
+    fn new(post: &posts::Model, error: Option<&str>) -> Self {
+        Self {
+            post_id: post.id,
+            url: post.cover_url(),
+            error: error.map(ToString::to_string),
+        }
+    }
+}
+
+/// The cover widget on the edit page (also the htmx response of uploads).
+///
+/// # Errors
+/// Template rendering errors.
+pub fn cover(
+    v: &impl ViewRenderer,
+    post: &posts::Model,
+    error: Option<&str>,
+    status: StatusCode,
+) -> Result<Response> {
+    format::render().status(status).view(
+        v,
+        "admin/_cover.html",
+        data!({ "cover": CoverView::new(post, error) }),
     )
 }
 

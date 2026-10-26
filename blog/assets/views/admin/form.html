@@ -7,4 +7,5 @@
 <p><a href="/admin">&larr; Back to posts</a></p>
 <h1>{% if is_edit %}Edit post{% else %}New post{% endif %}</h1>
 {% include "admin/_form.html" %}
+{% if cover %}<hr>{% include "admin/_cover.html" %}{% endif %}
 {% endblock content %}

@@ -1,0 +1,19 @@
+<section id="cover" class="field">
+  <label>Cover image</label>
+  {% if cover.url %}
+    <img class="cover" src="{{ cover.url }}" alt="Current cover">
+    <form method="post" action="/admin/posts/{{ cover.post_id }}/cover/delete" class="inline"
+          hx-post="/admin/posts/{{ cover.post_id }}/cover/delete" hx-target="#cover" hx-swap="outerHTML">
+      <button class="secondary" type="submit">Remove cover</button>
+    </form>
+  {% else %}
+    <p class="meta">No cover yet.</p>
+  {% endif %}
+  <form method="post" action="/admin/posts/{{ cover.post_id }}/cover" enctype="multipart/form-data"
+        hx-post="/admin/posts/{{ cover.post_id }}/cover" hx-encoding="multipart/form-data"
+        hx-target="#cover" hx-swap="outerHTML">
+    <input type="file" name="cover" accept="image/png,image/jpeg,image/gif,image/webp">
+    <button type="submit">Upload</button>
+  </form>
+  {% if cover.error %}<p class="error">{{ cover.error }}</p>{% endif %}
+</section>

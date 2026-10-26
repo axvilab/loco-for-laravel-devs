@@ -8,3 +8,4 @@ pub mod tags;
 pub mod session;
 
 pub mod admin;
+mod uploads;

@@ -4,6 +4,7 @@
 
 {% block content %}
 <article class="post">
+  {% if post.cover_url %}<img class="cover" src="{{ post.cover_url }}" alt="">{% endif %}
   <header>
     <h1>{{ post.title }}</h1>
     <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>{% if post.author %} <span class="meta">by {{ post.author }}</span>{% endif %}

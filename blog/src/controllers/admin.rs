@@ -123,14 +123,14 @@ fn invalid(
     v: &TeraView,
     headers: &HeaderMap,
     form: &PostForm,
-    post_id: Option<i64>,
+    post: Option<&posts::Model>,
     err: ModelError,
 ) -> Result<Response> {
     match err {
         ModelError::Validation(errors) => views::admin::post_form(
             v,
             form,
-            post_id,
+            post,
             &errors,
             is_htmx(headers),
             StatusCode::UNPROCESSABLE_ENTITY,
@@ -203,7 +203,7 @@ pub async fn edit(
     views::admin::post_form(
         &v,
         &form,
-        Some(post.id),
+        Some(&post),
         &validation::ModelValidationErrors {
             errors: std::collections::BTreeMap::new(),
         },
@@ -225,11 +225,16 @@ pub async fn update(
     let post = posts::Model::find_owned(&ctx.db, id, user.id).await?;
     let params = match form.to_params(user.id) {
         Ok(p) => p,
-        Err(e) => return invalid(&v, &headers, &form, Some(id), e),
+        Err(e) => return invalid(&v, &headers, &form, Some(&post), e),
     };
-    match post.into_active_model().update_from(&ctx.db, &params).await {
+    match post
+        .clone()
+        .into_active_model()
+        .update_from(&ctx.db, &params)
+        .await
+    {
         Ok(post) => redirect_with_flash(&headers, "/admin", &format!("Saved “{}”.", post.title)),
-        Err(e) => invalid(&v, &headers, &form, Some(id), e),
+        Err(e) => invalid(&v, &headers, &form, Some(&post), e),
     }
 }
 
@@ -244,6 +249,7 @@ pub async fn destroy(
 ) -> Result<Response> {
     let post = posts::Model::find_owned(&ctx.db, id, user.id).await?;
     let title = post.title.clone();
+    let post = post.remove_cover(&ctx.db, &ctx.storage).await?;
     post.delete(&ctx.db).await?;
     let message = format!("Deleted “{title}”.");
     if is_htmx(&headers) {
@@ -282,6 +288,86 @@ pub async fn toggle_publish(
     }
 }
 
+/// Read the `cover` file part of a multipart body.
+///
+/// `limit_payload` makes the body stream fail mid-read when it's too big;
+/// axum reports that as a `MultipartError` whose `status()` is 413.
+async fn read_cover(
+    mut multipart: Multipart,
+) -> std::result::Result<axum::body::Bytes, axum::extract::multipart::MultipartError> {
+    while let Some(field) = multipart.next_field().await? {
+        if field.name() == Some("cover") {
+            return field.bytes().await;
+        }
+    }
+    Ok(axum::body::Bytes::new())
+}
+
+/// `POST /admin/posts/{id}/cover` (multipart, field `cover`).
+#[debug_handler]
+pub async fn upload_cover(
+    CurrentUser(user): CurrentUser,
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+    multipart: Multipart,
+) -> Result<Response> {
+    let post = posts::Model::find_owned(&ctx.db, id, user.id).await?;
+    let bytes = match read_cover(multipart).await {
+        Ok(bytes) => bytes,
+        Err(e) if e.status() == StatusCode::PAYLOAD_TOO_LARGE => {
+            let msg = "Images must be 4 MB or smaller.";
+            return views::admin::cover(&v, &post, Some(msg), StatusCode::UNPROCESSABLE_ENTITY);
+        }
+        Err(e) => return Err(Error::BadRequest(format!("invalid upload: {e}"))),
+    };
+    match post
+        .clone()
+        .attach_cover(&ctx.db, &ctx.storage, &bytes)
+        .await
+    {
+        Ok(post) if is_htmx(&headers) => views::admin::cover(&v, &post, None, StatusCode::OK),
+        Ok(_) => redirect_with_flash(
+            &headers,
+            &format!("/admin/posts/{id}/edit"),
+            "Cover updated.",
+        ),
+        Err(Error::Model(ModelError::Validation(errors))) => {
+            let message = errors
+                .errors
+                .get("cover")
+                .and_then(|list| list.first())
+                .and_then(|e| e.message.clone())
+                .unwrap_or_else(|| "Invalid image.".to_string());
+            views::admin::cover(&v, &post, Some(&message), StatusCode::UNPROCESSABLE_ENTITY)
+        }
+        Err(e) => Err(e),
+    }
+}
+
+/// `POST /admin/posts/{id}/cover/delete`
+#[debug_handler]
+pub async fn delete_cover(
+    CurrentUser(user): CurrentUser,
+    ViewEngine(v): ViewEngine<TeraView>,
+    State(ctx): State<AppContext>,
+    Path(id): Path<i64>,
+    headers: HeaderMap,
+) -> Result<Response> {
+    let post = posts::Model::find_owned(&ctx.db, id, user.id).await?;
+    let post = post.remove_cover(&ctx.db, &ctx.storage).await?;
+    if is_htmx(&headers) {
+        views::admin::cover(&v, &post, None, StatusCode::OK)
+    } else {
+        redirect_with_flash(
+            &headers,
+            &format!("/admin/posts/{id}/edit"),
+            "Cover removed.",
+        )
+    }
+}
+
 pub fn routes() -> Routes {
     Routes::new()
         .prefix("/admin")
@@ -294,4 +380,6 @@ pub fn routes() -> Routes {
         .add("/posts/{id}", delete(destroy))
         .add("/posts/{id}/delete", post(destroy))
         .add("/posts/{id}/publish", post(toggle_publish))
+        .add("/posts/{id}/cover", post(upload_cover))
+        .add("/posts/{id}/cover/delete", post(delete_cover))
 }

@@ -39,6 +39,11 @@ server:
   host: <%= get_env(name="HOST") %>
   # Out of the box middleware configuration. to disable middleware you can changed the `enable` field to `false` of comment the middleware block
   middlewares:
+    # Request body cap (default 2mb). Covers may be up to 4 MB + form overhead.
+    # Writing the key flips its default to disabled — keep `enable: true`.
+    limit_payload:
+      enable: true
+      body_limit: 5mb
     static:
       enable: true
       must_exist: true

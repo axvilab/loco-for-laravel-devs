@@ -17,6 +17,27 @@ pub const PER_PAGE: u64 = 5;
 /// Characters in a list-page excerpt.
 const EXCERPT_LEN: usize = 220;
 
+/// Storage "directory" for cover images. Keys look like
+/// `uploads/covers/12-<uuid>.png`; the local driver is rooted at
+/// `assets/static`, so the file is served at `/static/<key>`.
+pub const COVER_DIR: &str = "uploads/covers";
+
+/// Largest accepted cover. (The request-wide cap is `limit_payload` in config.)
+pub const MAX_COVER_BYTES: usize = 4 * 1024 * 1024;
+
+/// Detect an image by its magic bytes — never trust the client's filename
+/// or `Content-Type`. Returns the file extension to store it under.
+#[must_use]
+pub fn sniff_image(bytes: &[u8]) -> Option<&'static str> {
+    match bytes {
+        [0x89, b'P', b'N', b'G', 0x0D, 0x0A, 0x1A, 0x0A, ..] => Some("png"),
+        [0xFF, 0xD8, 0xFF, ..] => Some("jpg"),
+        [b'G', b'I', b'F', b'8', b'7' | b'9', b'a', ..] => Some("gif"),
+        [b'R', b'I', b'F', b'F', _, _, _, _, b'W', b'E', b'B', b'P', ..] => Some("webp"),
+        _ => None,
+    }
+}
+
 /// Input for creating/updating a post. Used by the admin (step 06) and tests.
 /// `slug` is optional: when empty, it is derived from the title.
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -470,6 +491,73 @@ impl Model {
             .order_by_asc(tags::Column::Name)
             .all(db)
             .await?)
+    }
+
+    /// Public URL of the cover image, if any.
+    #[must_use]
+    pub fn cover_url(&self) -> Option<String> {
+        self.cover_image
+            .as_ref()
+            .map(|key| format!("/static/{key}"))
+    }
+
+    /// Validate + store a new cover, then point the post at it. The previous
+    /// file (if any) is deleted after the row is updated.
+    ///
+    /// Takes `&Storage`, not `&AppContext`: the model needs exactly the
+    /// storage and the DB, nothing else from the context.
+    ///
+    /// # Errors
+    /// `ModelError::Validation` (field `cover`) for empty/too big/not an
+    /// image; storage and DB errors otherwise.
+    pub async fn attach_cover(
+        self,
+        db: &DatabaseConnection,
+        storage: &loco_rs::storage::Storage,
+        bytes: &axum::body::Bytes,
+    ) -> Result<Self> {
+        if bytes.is_empty() {
+            return Err(field_error("cover", "required", "Choose an image to upload.").into());
+        }
+        if bytes.len() > MAX_COVER_BYTES {
+            return Err(field_error("cover", "too_big", "Images must be 4 MB or smaller.").into());
+        }
+        let Some(ext) = sniff_image(bytes) else {
+            return Err(field_error("cover", "type", "Only PNG, JPEG, GIF or WebP images.").into());
+        };
+        let key = format!("{COVER_DIR}/{}-{}.{ext}", self.id, Uuid::new_v4());
+        storage.upload(std::path::Path::new(&key), bytes).await?;
+
+        let old = self.cover_image.clone();
+        let mut item = self.into_active_model();
+        item.cover_image = ActiveValue::Set(Some(key));
+        let post = item.update(db).await?;
+
+        if let Some(old) = old {
+            if let Err(err) = storage.delete(std::path::Path::new(&old)).await {
+                tracing::warn!(key = old, error = %err, "could not delete old cover");
+            }
+        }
+        Ok(post)
+    }
+
+    /// # Errors
+    /// DB errors (a missing file is only logged).
+    pub async fn remove_cover(
+        self,
+        db: &DatabaseConnection,
+        storage: &loco_rs::storage::Storage,
+    ) -> Result<Self> {
+        let Some(key) = self.cover_image.clone() else {
+            return Ok(self);
+        };
+        let mut item = self.into_active_model();
+        item.cover_image = ActiveValue::Set(None);
+        let post = item.update(db).await?;
+        if let Err(err) = storage.delete(std::path::Path::new(&key)).await {
+            tracing::warn!(key, error = %err, "could not delete cover");
+        }
+        Ok(post)
     }
 
     /// A post **owned by** `user_id`. Someone else's post is "not found"

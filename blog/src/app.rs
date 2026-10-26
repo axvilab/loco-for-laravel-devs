@@ -7,6 +7,7 @@ use loco_rs::{
     controller::AppRoutes,
     db::{self, truncate_table},
     environment::Environment,
+    storage::{self, drivers},
     task::Tasks,
     Result,
 };
@@ -44,6 +45,24 @@ impl Hooks for App {
         config: Config,
     ) -> Result<BootResult> {
         create_app::<Self, Migrator>(mode, environment, config).await
+    }
+
+    /// Storage has no YAML config in Loco: it's wired here, in code.
+    ///
+    /// * tests: in-memory (nothing touches the disk, nothing to clean up)
+    /// * otherwise: local disk rooted at `assets/static`, so a key like
+    ///   `uploads/covers/x.png` is served by the `static` middleware at
+    ///   `/static/uploads/covers/x.png`.
+    async fn after_context(ctx: AppContext) -> Result<AppContext> {
+        let driver = if ctx.environment == Environment::Test {
+            drivers::mem::new()
+        } else {
+            drivers::local::new_with_prefix("assets/static")?
+        };
+        Ok(ctx
+            .into_builder()
+            .storage(storage::Storage::single(driver).into())
+            .build())
     }
 
     async fn initializers(_ctx: &AppContext) -> Result<Vec<Box<dyn Initializer>>> {

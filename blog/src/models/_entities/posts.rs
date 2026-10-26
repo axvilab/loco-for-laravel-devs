@@ -17,6 +17,7 @@ pub struct Model {
     pub body: String,
     pub published_at: Option<DateTimeWithTimeZone>,
     pub user_id: Option<i64>,
+    pub cover_image: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

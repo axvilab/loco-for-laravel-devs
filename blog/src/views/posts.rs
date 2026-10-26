@@ -39,6 +39,7 @@ pub struct PostSummary {
 #[derive(Debug, Serialize)]
 pub struct PostDetail {
     pub author: Option<String>,
+    pub cover_url: Option<String>,
     pub title: String,
     pub url: String,
     pub body_html: String,
@@ -106,6 +107,7 @@ impl PostDetail {
         let (published_on, published_iso) = dates(post);
         Self {
             author: author.map(|u| u.name.clone()),
+            cover_url: post.cover_url(),
             title: post.title.clone(),
             url: post_url(&post.slug),
             body_html: post.body_html(),

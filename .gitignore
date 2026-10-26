@@ -2,3 +2,6 @@ blog/target/
 *.sqlite
 *.sqlite-*
 .DS_Store
+
+# user uploads (ctx.storage local driver)
+blog/assets/static/uploads/
