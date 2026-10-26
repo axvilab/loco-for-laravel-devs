@@ -4,7 +4,6 @@ use blog::{
 };
 use chrono::{Duration, Utc};
 use loco_rs::prelude::*;
-use loco_rs::testing::prelude::*;
 use rstest::rstest;
 use serial_test::serial;
 
@@ -171,4 +170,27 @@ async fn publish_and_unpublish() {
 
     let post = post.into_active_model().unpublish(db).await.unwrap();
     assert!(!post.is_published());
+}
+
+#[test]
+fn markdown_renders_and_escapes_html() {
+    let html = posts::render_markdown(
+        "# Title\n\nSome **bold** <b>raw</b>\n\n| a | b |\n|---|---|\n| 1 | 2 |",
+    );
+    assert!(html.contains("<h1>Title</h1>"));
+    assert!(html.contains("<strong>bold</strong>"));
+    assert!(html.contains("&lt;b&gt;raw&lt;/b&gt;"));
+    assert!(html.contains("<table>"));
+}
+
+#[test]
+fn excerpt_skips_tables_and_truncates_on_word_boundary() {
+    let md = "First paragraph here.\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\nSecond paragraph.";
+    assert_eq!(
+        posts::excerpt(md, 220),
+        "First paragraph here. Second paragraph."
+    );
+    let long = "word ".repeat(100);
+    let e = posts::excerpt(&long, 22);
+    assert_eq!(e, "word word word word…");
 }

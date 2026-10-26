@@ -1,0 +1,33 @@
+---
+# Seed rows are inserted with `insert_many`, which bypasses `before_save`:
+# every column (id, slug, timestamps) must be present here.
+- id: 1
+  title: Hello, Loco
+  slug: hello-loco
+  body: |
+    Welcome to a blog built with **Loco**, the Rails-for-Rust framework.
+
+    This post is written in *Markdown* and rendered with `pulldown-cmark`.
+  published_at: "2026-10-01T09:00:00Z"
+  created_at: "2026-10-01T09:00:00Z"
+  updated_at: "2026-10-01T09:00:00Z"
+- id: 2
+  title: Models in Sea-ORM
+  slug: models-in-sea-orm
+  body: |
+    Sea-ORM splits Eloquent's `Post` into three types: `Model`, `ActiveModel` and `Entity`.
+
+    | Eloquent | Sea-ORM |
+    |---|---|
+    | `$post` | `posts::Model` |
+    | `$post->save()` | `ActiveModel::save` |
+  published_at: "2026-10-05T09:00:00Z"
+  created_at: "2026-10-05T09:00:00Z"
+  updated_at: "2026-10-05T09:00:00Z"
+- id: 3
+  title: A draft nobody sees
+  slug: a-draft-nobody-sees
+  body: Work in progress.
+  published_at: null
+  created_at: "2026-10-06T09:00:00Z"
+  updated_at: "2026-10-06T09:00:00Z"

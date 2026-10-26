@@ -1,0 +1,50 @@
+:root {
+  --fg: #1f2328;
+  --muted: #656d76;
+  --accent: #c2410c;
+  --bg: #fffdf9;
+  --line: #e7e2da;
+  --ok: #166534;
+  --err: #b91c1c;
+}
+* { box-sizing: border-box; }
+body { margin: 0; font: 17px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--fg); background: var(--bg); }
+a { color: var(--accent); }
+.container { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+.site-header { border-bottom: 1px solid var(--line); padding: 14px 0; margin-bottom: 28px; }
+.site-header .container { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
+.site-header nav { display: flex; gap: 14px; align-items: center; }
+.brand { font-weight: 700; text-decoration: none; color: var(--fg); }
+.site-footer { border-top: 1px solid var(--line); margin-top: 48px; padding: 18px 0; color: var(--muted); font-size: 14px; }
+.page-title { margin-top: 0; }
+.post-card { border-bottom: 1px solid var(--line); padding: 8px 0 16px; }
+.post-card h2 { margin: 0 0 4px; font-size: 1.3rem; }
+.post-card h2 a { color: var(--fg); text-decoration: none; }
+time, .meta { color: var(--muted); font-size: 14px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; padding: 0; list-style: none; }
+.tags a { font-size: 13px; text-decoration: none; border: 1px solid var(--line); border-radius: 99px; padding: 1px 10px; }
+.post-body img { max-width: 100%; }
+.post-body pre { background: #f6f3ee; padding: 12px; overflow-x: auto; }
+.cover { width: 100%; max-height: 360px; object-fit: cover; border-radius: 6px; }
+.pagination { display: flex; justify-content: space-between; align-items: center; margin-top: 24px; }
+.page-info { color: var(--muted); font-size: 14px; }
+.empty { color: var(--muted); }
+/* forms / admin */
+.flash { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; border: 1px solid; }
+.flash.ok { color: var(--ok); border-color: var(--ok); }
+.flash.err { color: var(--err); border-color: var(--err); }
+form .field { margin-bottom: 14px; }
+form label { display: block; font-weight: 600; margin-bottom: 4px; }
+form input[type=text], form input[type=email], form input[type=password], form input[type=datetime-local], form textarea {
+  width: 100%; padding: 8px; font: inherit; border: 1px solid var(--line); border-radius: 6px; background: #fff;
+}
+form textarea { min-height: 240px; font-family: ui-monospace, monospace; font-size: 15px; }
+.field .error { color: var(--err); font-size: 14px; margin: 4px 0 0; }
+.field.has-error input, .field.has-error textarea { border-color: var(--err); }
+button, .button { font: inherit; padding: 7px 14px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; text-decoration: none; display: inline-block; }
+button.secondary, .button.secondary { background: transparent; color: var(--accent); }
+button.danger { background: var(--err); border-color: var(--err); }
+table.admin { width: 100%; border-collapse: collapse; }
+table.admin th, table.admin td { text-align: left; padding: 8px 6px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.actions { display: flex; gap: 8px; }
+.inline { display: inline; }

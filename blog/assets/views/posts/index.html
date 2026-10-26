@@ -1,0 +1,17 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<h1 class="page-title">Latest posts</h1>
+
+{% for post in posts %}
+<article class="post-card">
+  <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+  <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>
+  <p>{{ post.excerpt }}</p>
+</article>
+{% else %}
+<p class="empty">No posts yet.</p>
+{% endfor %}
+
+{% include "partials/pagination.html" %}
+{% endblock content %}

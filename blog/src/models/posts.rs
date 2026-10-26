@@ -9,6 +9,12 @@ pub type Posts = Entity;
 /// Longest slug we generate from a title (before a `-N` suffix is added).
 const MAX_SLUG_LEN: usize = 80;
 
+/// Posts per page on the public index.
+pub const PER_PAGE: u64 = 5;
+
+/// Characters in a list-page excerpt.
+const EXCERPT_LEN: usize = 220;
+
 /// Input for creating/updating a post. Used by the admin (step 06) and tests.
 /// `slug` is optional: when empty, it is derived from the title.
 #[derive(Debug, Default, Clone, Deserialize)]
@@ -185,7 +191,102 @@ impl PostParams {
     }
 }
 
+/// Markdown -> HTML (`CommonMark` + tables, strikethrough, footnotes).
+///
+/// Raw HTML inside the markdown is **escaped**, not passed through: the
+/// output is rendered with `| safe` in templates, so passing `<script>`
+/// through would be an XSS hole. (Same idea as Laravel's
+/// `Str::markdown($s, ['html_input' => 'escape'])`.)
+#[must_use]
+pub fn render_markdown(markdown: &str) -> String {
+    use pulldown_cmark::{html, Event, Options, Parser};
+
+    let opts = Options::ENABLE_TABLES
+        | Options::ENABLE_STRIKETHROUGH
+        | Options::ENABLE_FOOTNOTES
+        | Options::ENABLE_SMART_PUNCTUATION;
+    let parser = Parser::new_ext(markdown, opts).map(|event| match event {
+        Event::Html(raw) | Event::InlineHtml(raw) => Event::Text(raw),
+        other => other,
+    });
+    let mut out = String::with_capacity(markdown.len() * 3 / 2);
+    html::push_html(&mut out, parser);
+    out
+}
+
+/// Plain-text start of the markdown, cut at a word boundary.
+///
+/// Only paragraph/heading text counts: tables, code blocks and lists are
+/// skipped so the excerpt never shows `|---|` noise.
+#[must_use]
+pub fn excerpt(markdown: &str, max_chars: usize) -> String {
+    use pulldown_cmark::{Event, Options, Parser, Tag, TagEnd};
+
+    let mut text = String::new();
+    let mut in_text_block = false;
+    for event in Parser::new_ext(markdown, Options::ENABLE_TABLES) {
+        match event {
+            Event::Start(Tag::Paragraph | Tag::Heading { .. }) => in_text_block = true,
+            Event::End(TagEnd::Paragraph | TagEnd::Heading(_)) => {
+                in_text_block = false;
+                if text.chars().count() >= max_chars / 2 {
+                    break;
+                }
+                text.push(' ');
+            }
+            Event::Start(Tag::Table(_) | Tag::CodeBlock(_) | Tag::List(_)) => {
+                in_text_block = false;
+            }
+            Event::Text(t) | Event::Code(t) if in_text_block => text.push_str(&t),
+            Event::SoftBreak | Event::HardBreak if in_text_block => text.push(' '),
+            _ => {}
+        }
+        if text.chars().count() > max_chars {
+            break;
+        }
+    }
+    let text = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    if text.chars().count() <= max_chars {
+        return text;
+    }
+    let cut: String = text.chars().take(max_chars).collect();
+    let cut = cut.rsplit_once(' ').map_or(cut.as_str(), |(head, _)| head);
+    format!("{}…", cut.trim_end_matches(|c: char| !c.is_alphanumeric()))
+}
+
 impl Model {
+    #[must_use]
+    pub fn body_html(&self) -> String {
+        render_markdown(&self.body)
+    }
+
+    #[must_use]
+    pub fn excerpt(&self) -> String {
+        excerpt(&self.body, EXCERPT_LEN)
+    }
+
+    /// One page of published posts, newest first. `page_size` is fixed
+    /// server-side: `PaginationQuery` would happily accept `?page_size=1000000`.
+    ///
+    /// Returns `loco_rs::Result` (not `ModelResult`) because `fetch_page` does.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn published_page(
+        db: &DatabaseConnection,
+        page: u64,
+    ) -> Result<query::PageResponse<Self>> {
+        let pagination = query::PaginationQuery {
+            page: page.max(1),
+            page_size: PER_PAGE,
+        };
+        let select = Entity::find()
+            .filter(Self::published_condition())
+            .order_by_desc(Column::PublishedAt)
+            .order_by_desc(Column::Id);
+        query::fetch_page(db, select, &pagination).await
+    }
+
     /// The one definition of "publicly visible". Every public query goes
     /// through [`Model::published_condition`] so this can change in one place.
     #[must_use]

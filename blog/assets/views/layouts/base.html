@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Loco Blog{% endblock title %}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  {% block head %}{% endblock head %}
+</head>
+<body>
+  {% include "partials/header.html" %}
+  <main class="container">
+    {% block content %}{% endblock content %}
+  </main>
+  {% include "partials/footer.html" %}
+</body>
+</html>

@@ -54,8 +54,8 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
+            .add_route(controllers::posts::routes())
             .add_route(controllers::auth::routes())
-            .add_route(controllers::page::routes())
     }
     async fn connect_workers(ctx: &AppContext, queue: &Queue) -> Result<()> {
         queue.register(DownloadWorker::build(ctx)).await?;
@@ -76,6 +76,8 @@ impl Hooks for App {
     }
     async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
         db::seed::<users::ActiveModel>(&ctx.db, &base.join("users.yaml").display().to_string())
+            .await?;
+        db::seed::<posts::ActiveModel>(&ctx.db, &base.join("posts.yaml").display().to_string())
             .await?;
         Ok(())
     }
