@@ -46,7 +46,20 @@ workers:
   #   - BackgroundQueue - Workers operate asynchronously in the background, processing queued.
   #   - ForegroundBlocking - Workers operate in the foreground and block until tasks are completed.
   #   - BackgroundAsync - Workers operate asynchronously in the background, processing tasks with async capabilities.
-  mode: BackgroundAsync
+  # Was `BackgroundAsync` (in-process tokio tasks). Jobs enqueued by short-lived
+  # processes — tasks, the scheduler — died with the process (step 05/08).
+  # A persistent queue survives; run `cargo loco start --server-and-worker`
+  # (or `start` + `start --worker` as two processes).
+  mode: BackgroundQueue
+
+# Queue backend for BackgroundQueue. SQLite in dev, so there's nothing to
+# install; a separate file keeps queue polling off the app DB's write lock.
+queue:
+  kind: Sqlite
+  uri: <%= get_env(name="QUEUE_URL", default="sqlite://blog_queue_development.sqlite?mode=rwc") %>
+  dangerously_flush: false
+  poll_interval_sec: 1
+  num_workers: 2
 
   
 

@@ -5,3 +5,4 @@ blog/target/
 
 # user uploads (ctx.storage local driver)
 blog/assets/static/uploads/
+blog/scheduler.txt

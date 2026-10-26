@@ -608,6 +608,41 @@ impl Model {
         Ok(post)
     }
 
+    /// Live posts whose subscribers haven't been notified yet, published
+    /// after `since` (so turning the feature on doesn't announce the whole
+    /// archive).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn due_for_announcement(
+        db: &DatabaseConnection,
+        since: DateTimeWithTimeZone,
+    ) -> ModelResult<Vec<Self>> {
+        Ok(Entity::find()
+            .filter(Self::published_condition())
+            .filter(Column::PublishedAt.gt(since))
+            .filter(Column::NotifiedAt.is_null())
+            .order_by_asc(Column::PublishedAt)
+            .all(db)
+            .await?)
+    }
+
+    /// Every storage key currently referenced by a post.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn cover_keys(
+        db: &DatabaseConnection,
+    ) -> ModelResult<std::collections::HashSet<String>> {
+        Ok(Entity::find()
+            .filter(Column::CoverImage.is_not_null())
+            .all(db)
+            .await?
+            .into_iter()
+            .filter_map(|p| p.cover_image)
+            .collect())
+    }
+
     /// A post **owned by** `user_id`. Someone else's post is "not found"
     /// (404), not "forbidden": we don't confirm that the id exists.
     /// (Laravel: a Policy, or `$user->posts()->findOrFail($id)`.)

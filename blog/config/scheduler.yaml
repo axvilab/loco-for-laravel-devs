@@ -1,0 +1,15 @@
+# Recurring work for `cargo loco scheduler --config config/scheduler.yaml`.
+#
+# The scheduler holds no logic: each job runs a *task* (or a shell command)
+# as a separate process. Cron here has SIX/SEVEN fields — seconds first.
+output: stdout
+jobs:
+  publish_scheduled:
+    run: "publish_scheduled"
+    schedule: "0 * * * * *"          # every minute, at second 0
+    tags: ["content"]
+
+  cleanup:
+    run: "cleanup min_age_minutes:60"
+    schedule: "every day at 3:00 am" # English works too (english-to-cron)
+    tags: ["maintenance"]

@@ -59,3 +59,12 @@ rstest = { version = "0.25" }
 insta = { version = "1.34", features = ["redactions", "yaml", "filters"] }
 # multipart request bodies in tests (loco re-exports only `TestServer`)
 axum-test = { version = "17.3" }
+
+# Debug builds of a Loco app are large (every test/app binary is ~400 MB with
+# full debug info, and `target/` reached 11 GB by step 08 on a small disk).
+# Line tables keep file:line in backtraces at a fraction of the size.
+[profile.dev]
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false
