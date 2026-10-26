@@ -16,7 +16,7 @@ use std::path::Path;
 #[allow(unused_imports)]
 use crate::{
     controllers, initializers,
-    models::_entities::{posts, users},
+    models::_entities::{post_tags, posts, tags, users},
     tasks,
     workers::downloader::DownloadWorker,
 };
@@ -54,6 +54,7 @@ impl Hooks for App {
 
     fn routes(_ctx: &AppContext) -> AppRoutes {
         AppRoutes::with_default_routes() // controller routes below
+            .add_route(controllers::tags::routes())
             .add_route(controllers::posts::routes())
             .add_route(controllers::auth::routes())
     }
@@ -70,6 +71,8 @@ impl Hooks for App {
     }
     async fn truncate(ctx: &AppContext) -> Result<()> {
         // children before parents once foreign keys exist
+        truncate_table(&ctx.db, post_tags::Entity).await?;
+        truncate_table(&ctx.db, tags::Entity).await?;
         truncate_table(&ctx.db, posts::Entity).await?;
         truncate_table(&ctx.db, users::Entity).await?;
         Ok(())
@@ -79,6 +82,13 @@ impl Hooks for App {
             .await?;
         db::seed::<posts::ActiveModel>(&ctx.db, &base.join("posts.yaml").display().to_string())
             .await?;
+        db::seed::<tags::ActiveModel>(&ctx.db, &base.join("tags.yaml").display().to_string())
+            .await?;
+        db::seed::<post_tags::ActiveModel>(
+            &ctx.db,
+            &base.join("post_tags.yaml").display().to_string(),
+        )
+        .await?;
         Ok(())
     }
 }

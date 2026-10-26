@@ -4,6 +4,8 @@ use serde::Deserialize;
 use validator::ValidationError;
 
 pub use super::_entities::posts::{self, ActiveModel, Column, Entity, Model};
+use super::_entities::{post_tags, tags};
+use sea_orm::{DatabaseTransaction, LoaderTrait};
 pub type Posts = Entity;
 
 /// Longest slug we generate from a title (before a `-N` suffix is added).
@@ -25,6 +27,9 @@ pub struct PostParams {
     pub body: String,
     #[serde(default)]
     pub published_at: Option<DateTimeWithTimeZone>,
+    /// Comma-separated tag names: "rust, loco".
+    #[serde(default)]
+    pub tags: String,
 }
 
 /// Field rules. `ActiveModel` fields are `ActiveValue<T>`, so the `validator`
@@ -345,17 +350,100 @@ impl Model {
             .await?)
     }
 
-    /// Validate, then insert. Slug is derived in `before_save` when empty.
+    /// Validate, then insert the post and its tags in one transaction.
+    /// Slug is derived in `before_save` when empty.
     ///
     /// # Errors
     /// `ModelError::Validation` for bad input, DB errors otherwise.
     pub async fn create(db: &DatabaseConnection, params: &PostParams) -> ModelResult<Self> {
         params.validate_for_save()?;
+        let txn = db.begin().await?;
         let mut item = ActiveModel {
             ..Default::default()
         };
         params.apply(&mut item);
-        Ok(item.insert(db).await?)
+        let post = item.insert(&txn).await?;
+        post.sync_tags(&txn, &super::tags::parse_list(&params.tags))
+            .await?;
+        txn.commit().await?;
+        Ok(post)
+    }
+
+    /// Replace this post's tags with `names` (creating missing tags).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn sync_tags(
+        &self,
+        txn: &DatabaseTransaction,
+        names: &[String],
+    ) -> ModelResult<Vec<tags::Model>> {
+        post_tags::Entity::delete_many()
+            .filter(post_tags::Column::PostId.eq(self.id))
+            .exec(txn)
+            .await?;
+        let mut attached = Vec::with_capacity(names.len());
+        for name in names {
+            attached.push(super::tags::Model::find_or_create(txn, name).await?);
+        }
+        if !attached.is_empty() {
+            post_tags::Entity::insert_many(attached.iter().map(|tag| post_tags::ActiveModel {
+                post_id: ActiveValue::Set(self.id),
+                tag_id: ActiveValue::Set(tag.id),
+            }))
+            .exec(txn)
+            .await?;
+        }
+        Ok(attached)
+    }
+
+    /// This post's tags (one query, through the `post_tags` join table).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn tags(&self, db: &DatabaseConnection) -> ModelResult<Vec<tags::Model>> {
+        Ok(self
+            .find_related(tags::Entity)
+            .order_by_asc(tags::Column::Name)
+            .all(db)
+            .await?)
+    }
+
+    /// Eager-load tags for many posts: **two queries total**, not N+1.
+    /// Result is index-aligned with `posts`.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn load_tags(
+        db: &DatabaseConnection,
+        posts: &[Self],
+    ) -> ModelResult<Vec<Vec<tags::Model>>> {
+        let mut all = posts.load_many(tags::Entity, db).await?;
+        for list in &mut all {
+            list.sort_by(|a, b| a.name.cmp(&b.name));
+        }
+        Ok(all)
+    }
+
+    /// One page of published posts carrying `tag`.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn published_page_for_tag(
+        db: &DatabaseConnection,
+        tag: &tags::Model,
+        page: u64,
+    ) -> Result<query::PageResponse<Self>> {
+        let pagination = query::PaginationQuery {
+            page: page.max(1),
+            page_size: PER_PAGE,
+        };
+        let select = tag
+            .find_related(Entity)
+            .filter(Self::published_condition())
+            .order_by_desc(Column::PublishedAt)
+            .order_by_desc(Column::Id);
+        query::fetch_page(db, select, &pagination).await
     }
 }
 
@@ -369,7 +457,12 @@ impl ActiveModel {
     ) -> ModelResult<Model> {
         params.validate_for_save()?;
         params.apply(&mut self);
-        Ok(self.update(db).await?)
+        let txn = db.begin().await?;
+        let post = self.update(&txn).await?;
+        post.sync_tags(&txn, &super::tags::parse_list(&params.tags))
+            .await?;
+        txn.commit().await?;
+        Ok(post)
     }
 
     /// Publish now.

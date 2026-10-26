@@ -1,0 +1,16 @@
+---
+- id: 1
+  name: Loco
+  slug: loco
+  created_at: "2026-10-01T09:00:00Z"
+  updated_at: "2026-10-01T09:00:00Z"
+- id: 2
+  name: Rust
+  slug: rust
+  created_at: "2026-10-01T09:00:00Z"
+  updated_at: "2026-10-01T09:00:00Z"
+- id: 3
+  name: Sea-ORM
+  slug: sea-orm
+  created_at: "2026-10-01T09:00:00Z"
+  updated_at: "2026-10-01T09:00:00Z"

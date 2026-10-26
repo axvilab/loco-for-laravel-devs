@@ -1,0 +1,20 @@
+{% extends "layouts/base.html" %}
+
+{% block title %}#{{ tag.name }} · Loco Blog{% endblock title %}
+
+{% block content %}
+<h1 class="page-title">Posts tagged #{{ tag.name }}</h1>
+
+{% for post in posts %}
+<article class="post-card">
+  <h2><a href="{{ post.url }}">{{ post.title }}</a></h2>
+  <time datetime="{{ post.published_iso }}">{{ post.published_on }}</time>
+  {% include "partials/tags.html" %}
+  <p>{{ post.excerpt }}</p>
+</article>
+{% else %}
+<p class="empty">No published posts with this tag.</p>
+{% endfor %}
+
+{% include "partials/pagination.html" %}
+{% endblock content %}

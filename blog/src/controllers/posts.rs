@@ -11,7 +11,8 @@ pub async fn index(
     Query(pagination): Query<query::PaginationQuery>,
 ) -> Result<Response> {
     let page = posts::Model::published_page(&ctx.db, pagination.page).await?;
-    views::posts::index(&v, &page)
+    let tags = posts::Model::load_tags(&ctx.db, &page.page).await?;
+    views::posts::index(&v, &page, &tags)
 }
 
 /// `GET /posts/{slug}` — a single published post, HTML 404 otherwise.
@@ -22,7 +23,10 @@ pub async fn show(
     Path(slug): Path<String>,
 ) -> Result<Response> {
     match posts::Model::find_published_by_slug(&ctx.db, &slug).await {
-        Ok(post) => views::posts::show(&v, &post),
+        Ok(post) => {
+            let tags = post.tags(&ctx.db).await?;
+            views::posts::show(&v, &post, &tags)
+        }
         Err(ModelError::EntityNotFound) => views::posts::not_found(&v),
         Err(e) => Err(e.into()),
     }
