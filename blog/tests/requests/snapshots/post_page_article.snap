@@ -1,0 +1,31 @@
+---
+source: tests/requests/snapshots.rs
+expression: article
+---
+<article class="post">
+  
+  <header>
+    <h1>Snapshot &lt;post&gt; &amp; co</h1>
+    <time datetime="2026-01-02T03:04:05+00:00">January 2, 2026</time>
+    
+<ul class="tags">
+  <li><a href="/tags/loco">#loco</a></li><li><a href="/tags/rust">#rust</a></li>
+</ul>
+
+
+  </header>
+  <div class="post-body">
+    <p>Intro with <strong>bold</strong>, <code>code</code> and a <a href="https://loco.rs">link</a>.</p>
+<h2>A heading</h2>
+<table><thead><tr><th>Laravel</th><th>Loco</th></tr></thead><tbody>
+<tr><td>Eloquent</td><td>Sea-ORM</td></tr>
+</tbody></table>
+<pre><code class="language-rust">fn main() {}
+</code></pre>
+<p>A footnote.<sup class="footnote-reference"><a href="#1">1</a></sup></p>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>The note.</p>
+</div>
+
+  </div>
+</article>

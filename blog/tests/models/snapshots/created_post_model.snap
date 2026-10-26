@@ -1,0 +1,18 @@
+---
+source: tests/models/posts.rs
+expression: post
+---
+Model {
+    created_at: DATE,
+    updated_at: DATE,
+    id: ID
+    title: "Redacted",
+    slug: "redacted",
+    body: "Some *markdown* body",
+    published_at: None,
+    user_id: None,
+    cover_image: None,
+    reading_minutes: None,
+    body_html: None,
+    notified_at: None,
+}

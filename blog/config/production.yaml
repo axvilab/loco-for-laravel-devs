@@ -139,4 +139,5 @@ auth:
 # App-specific settings (typed in src/data/settings.rs)
 settings:
   base_url: <%= get_env(name="BASE_URL") %>
+  mail_from: <%= get_env(name="MAIL_FROM") %>
   cookie_secure: true

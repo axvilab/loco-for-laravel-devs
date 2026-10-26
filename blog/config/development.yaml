@@ -149,4 +149,5 @@ auth:
 # App-specific settings (typed in src/data/settings.rs)
 settings:
   base_url: http://localhost:5150
+  mail_from: "Loco Blog <noreply@localhost>"
   cookie_secure: false

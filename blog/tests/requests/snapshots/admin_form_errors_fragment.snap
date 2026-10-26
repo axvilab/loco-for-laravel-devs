@@ -1,0 +1,41 @@
+---
+source: tests/requests/snapshots.rs
+expression: res.text()
+---
+<form id="post-form" method="post" action="/admin/posts" novalidate
+      hx-post="/admin/posts"
+      hx-target="this" hx-swap="outerHTML">
+  <div class="flash err" role="alert">Please fix the errors below.</div>
+
+  <div class="field has-error">
+    <label for="title">Title</label>
+    <input type="text" id="title" name="title" value="">
+    <p class="error">Title must be 1–200 characters.</p>
+  </div>
+
+  <div class="field has-error">
+    <label for="slug">Slug <span class="meta">(leave empty to derive from the title)</span></label>
+    <input type="text" id="slug" name="slug" value="Not A Slug">
+    <p class="error">Slug may contain only a-z, 0-9 and single dashes.</p>
+  </div>
+
+  <div class="field has-error">
+    <label for="body">Body <span class="meta">(Markdown)</span></label>
+    <textarea id="body" name="body"></textarea>
+    <p class="error">Body can&#39;t be empty.</p>
+  </div>
+
+  <div class="field ">
+    <label for="tags">Tags <span class="meta">(comma separated)</span></label>
+    <input type="text" id="tags" name="tags" value="x">
+    
+  </div>
+
+  <div class="field has-error">
+    <label for="published_at">Publish at <span class="meta">(UTC; empty = draft)</span></label>
+    <input type="datetime-local" id="published_at" name="published_at" value="soon">
+    <p class="error">Use the format YYYY-MM-DDTHH:MM.</p>
+  </div>
+
+  <button type="submit">Create</button>
+</form>

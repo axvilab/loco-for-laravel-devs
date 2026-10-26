@@ -9,6 +9,14 @@ pub struct Settings {
     /// Mark the auth cookie `Secure` (HTTPS only). `true` in production.
     #[serde(default)]
     pub cookie_secure: bool,
+    /// `From:` for outgoing mail. Loco's default is
+    /// `System <system@example.com>` (`mailer::DEFAULT_FROM_SENDER`).
+    #[serde(default = "default_mail_from")]
+    pub mail_from: String,
+}
+
+fn default_mail_from() -> String {
+    "Loco Blog <noreply@localhost>".to_string()
 }
 
 impl Settings {

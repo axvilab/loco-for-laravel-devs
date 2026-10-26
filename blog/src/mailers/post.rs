@@ -26,12 +26,14 @@ impl PostMailer {
         subscriber: &subscribers::Model,
         post: &posts::Model,
     ) -> Result<()> {
-        let base = Settings::from_context(ctx)?.base_url;
+        let settings = Settings::from_context(ctx)?;
+        let base = settings.base_url;
         Self::mail_template_with_shared(
             ctx,
             &new_post,
             &[&shared],
             mailer::Args {
+                from: Some(settings.mail_from),
                 to: subscriber.email.clone(),
                 locals: json!({
                     "title": post.title,

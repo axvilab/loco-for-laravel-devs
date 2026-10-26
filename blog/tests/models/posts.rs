@@ -217,3 +217,38 @@ async fn post_belongs_to_author() {
         .iter()
         .all(|a| a.as_ref().map(|u| u.id) == Some(author.id)));
 }
+
+#[tokio::test]
+#[serial]
+async fn validation_errors_snapshot() {
+    let boot = boot_test::<App>().await.unwrap();
+    let mut p = params("");
+    p.slug = "-bad-".into();
+    p.body = String::new();
+    let err = posts::Model::create(&boot.app_context.db, &p)
+        .await
+        .unwrap_err();
+    let ModelError::Validation(errors) = err else {
+        panic!("expected validation errors, got {err:?}");
+    };
+    // `params` is a HashMap: its Debug output order changes between runs.
+    // A serde snapshot with `sort_maps` is stable.
+    insta::with_settings!({ prepend_module_to_snapshot => false, sort_maps => true }, {
+        insta::assert_yaml_snapshot!("post_validation_errors", errors);
+    });
+}
+
+/// A whole `Model` with loco's redactions: ids and timestamps vary per run.
+#[tokio::test]
+#[serial]
+async fn created_model_snapshot_with_redactions() {
+    let boot = boot_test::<App>().await.unwrap();
+    let post = posts::Model::create(&boot.app_context.db, &params("Redacted"))
+        .await
+        .unwrap();
+    let mut filters: Vec<(&str, &str)> = get_cleanup_date().clone();
+    filters.extend(get_cleanup_model().iter().copied());
+    insta::with_settings!({ filters => filters, prepend_module_to_snapshot => false }, {
+        insta::assert_debug_snapshot!("created_post_model", post);
+    });
+}

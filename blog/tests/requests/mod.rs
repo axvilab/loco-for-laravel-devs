@@ -14,3 +14,4 @@ pub mod subscriptions;
 
 mod caching;
 pub mod feeds;
+mod snapshots;

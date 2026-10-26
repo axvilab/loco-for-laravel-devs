@@ -1,0 +1,23 @@
+---
+source: tests/models/posts.rs
+expression: errors
+---
+errors:
+  body:
+    - code: length
+      message: "Body can't be empty."
+      params:
+        min: 1
+        value: ""
+  slug:
+    - code: slug
+      message: "Slug may contain only a-z, 0-9 and single dashes."
+      params:
+        value: "-bad-"
+  title:
+    - code: length
+      message: Title must be 1–200 characters.
+      params:
+        max: 200
+        min: 1
+        value: ""

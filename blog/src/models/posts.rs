@@ -315,8 +315,13 @@ pub fn excerpt(markdown: &str, max_chars: usize) -> String {
 
     let mut text = String::new();
     let mut in_text_block = false;
-    for event in Parser::new_ext(markdown, Options::ENABLE_TABLES) {
+    let mut in_footnote = false;
+    let opts = Options::ENABLE_TABLES | Options::ENABLE_FOOTNOTES;
+    for event in Parser::new_ext(markdown, opts) {
         match event {
+            Event::Start(Tag::FootnoteDefinition(_)) => in_footnote = true,
+            Event::End(TagEnd::FootnoteDefinition) => in_footnote = false,
+            _ if in_footnote => {}
             Event::Start(Tag::Paragraph | Tag::Heading { .. }) => in_text_block = true,
             Event::End(TagEnd::Paragraph | TagEnd::Heading(_)) => {
                 in_text_block = false;
