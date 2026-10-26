@@ -4,7 +4,7 @@ use serde::Deserialize;
 use validator::ValidationError;
 
 pub use super::_entities::posts::{self, ActiveModel, Column, Entity, Model};
-use super::_entities::{post_tags, tags};
+use super::_entities::{post_tags, tags, users};
 use sea_orm::{DatabaseTransaction, LoaderTrait};
 pub type Posts = Entity;
 
@@ -30,6 +30,10 @@ pub struct PostParams {
     /// Comma-separated tag names: "rust, loco".
     #[serde(default)]
     pub tags: String,
+    /// Author. Never read from a form (`skip`): the controller sets it from
+    /// the logged-in user.
+    #[serde(skip)]
+    pub user_id: Option<i64>,
 }
 
 /// Field rules. `ActiveModel` fields are `ActiveValue<T>`, so the `validator`
@@ -105,6 +109,20 @@ pub fn slugify(input: &str) -> String {
         "post".to_string()
     } else {
         s
+    }
+}
+
+/// `posts.user_id -> users.id`, written by hand.
+///
+/// `sea-orm-cli` derives relations from FOREIGN KEY constraints. SQLite can't
+/// add one to an existing table, so the regenerated entity has `user_id` but
+/// no `Relation::Users`. This is the `belongsTo(User::class)` it couldn't see.
+impl sea_orm::Related<users::Entity> for Entity {
+    fn to() -> sea_orm::RelationDef {
+        Entity::belongs_to(users::Entity)
+            .from(Column::UserId)
+            .to(users::Column::Id)
+            .into()
     }
 }
 
@@ -193,6 +211,9 @@ impl PostParams {
         item.slug = ActiveValue::Set(self.slug.trim().to_string());
         item.body = ActiveValue::Set(self.body.clone());
         item.published_at = ActiveValue::Set(self.published_at);
+        if let Some(user_id) = self.user_id {
+            item.user_id = ActiveValue::Set(Some(user_id));
+        }
     }
 }
 
@@ -407,6 +428,38 @@ impl Model {
             .order_by_asc(tags::Column::Name)
             .all(db)
             .await?)
+    }
+
+    /// All posts by one author, newest first (drafts included).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn by_author(db: &DatabaseConnection, user_id: i64) -> ModelResult<Vec<Self>> {
+        Ok(Entity::find()
+            .filter(Column::UserId.eq(user_id))
+            .order_by_desc(Column::CreatedAt)
+            .order_by_desc(Column::Id)
+            .all(db)
+            .await?)
+    }
+
+    /// The author, if any.
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn author(&self, db: &DatabaseConnection) -> ModelResult<Option<users::Model>> {
+        Ok(self.find_related(users::Entity).one(db).await?)
+    }
+
+    /// Eager-load authors for many posts (one `WHERE id IN (..)` query).
+    ///
+    /// # Errors
+    /// DB errors.
+    pub async fn load_authors(
+        db: &DatabaseConnection,
+        posts: &[Self],
+    ) -> ModelResult<Vec<Option<users::Model>>> {
+        Ok(posts.load_one(users::Entity, db).await?)
     }
 
     /// Eager-load tags for many posts: **two queries total**, not N+1.

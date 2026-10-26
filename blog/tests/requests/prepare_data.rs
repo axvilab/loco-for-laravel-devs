@@ -55,3 +55,34 @@ pub fn auth_header(token: &str) -> (HeaderName, HeaderValue) {
 
     (HeaderName::from_static("authorization"), auth_header_value)
 }
+
+pub const ADMIN_EMAIL: &str = "admin@example.com";
+pub const ADMIN_PASSWORD: &str = "secret123";
+
+/// A user created through the model (no HTTP), for browser-login tests.
+pub async fn create_user(ctx: &AppContext, email: &str, name: &str) -> users::Model {
+    users::Model::create_with_password(
+        &ctx.db,
+        &users::RegisterParams {
+            email: email.to_string(),
+            password: ADMIN_PASSWORD.to_string(),
+            name: name.to_string(),
+        },
+    )
+    .await
+    .unwrap()
+}
+
+/// Log in through the HTML form. With `save_cookies(true)` the server keeps
+/// the `auth_token` cookie for the following requests.
+pub async fn browser_login(request: &TestServer, email: &str) {
+    let res = request
+        .post("/login")
+        .form(&[
+            ("email", email),
+            ("password", ADMIN_PASSWORD),
+            ("next", "/admin"),
+        ])
+        .await;
+    assert_eq!(res.status_code(), 303, "login failed: {}", res.text());
+}

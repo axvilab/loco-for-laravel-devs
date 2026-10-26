@@ -4,7 +4,7 @@ use axum::http::StatusCode;
 use loco_rs::prelude::*;
 use serde::Serialize;
 
-use crate::models::{posts, tags};
+use crate::models::{posts, tags, users};
 
 #[derive(Debug, Serialize)]
 pub struct TagLink {
@@ -27,6 +27,7 @@ fn tag_links(tags: &[tags::Model]) -> Vec<TagLink> {
 
 #[derive(Debug, Serialize)]
 pub struct PostSummary {
+    pub author: Option<String>,
     pub title: String,
     pub url: String,
     pub excerpt: String,
@@ -37,6 +38,7 @@ pub struct PostSummary {
 
 #[derive(Debug, Serialize)]
 pub struct PostDetail {
+    pub author: Option<String>,
     pub title: String,
     pub url: String,
     pub body_html: String,
@@ -68,9 +70,10 @@ fn dates(post: &posts::Model) -> (String, String) {
 
 impl PostSummary {
     #[must_use]
-    pub fn new(post: &posts::Model, tags: &[tags::Model]) -> Self {
+    pub fn new(post: &posts::Model, tags: &[tags::Model], author: Option<&users::Model>) -> Self {
         let (published_on, published_iso) = dates(post);
         Self {
+            author: author.map(|u| u.name.clone()),
             title: post.title.clone(),
             url: post_url(&post.slug),
             excerpt: post.excerpt(),
@@ -80,22 +83,29 @@ impl PostSummary {
         }
     }
 
-    /// Zip a page of posts with their eager-loaded tags.
+    /// Zip a page of posts with their eager-loaded tags and authors
+    /// (all three slices are index-aligned).
     #[must_use]
-    pub fn list(posts: &[posts::Model], tags: &[Vec<tags::Model>]) -> Vec<Self> {
+    pub fn list(
+        posts: &[posts::Model],
+        tags: &[Vec<tags::Model>],
+        authors: &[Option<users::Model>],
+    ) -> Vec<Self> {
         posts
             .iter()
             .zip(tags)
-            .map(|(post, tags)| Self::new(post, tags))
+            .zip(authors)
+            .map(|((post, tags), author)| Self::new(post, tags, author.as_ref()))
             .collect()
     }
 }
 
 impl PostDetail {
     #[must_use]
-    pub fn new(post: &posts::Model, tags: &[tags::Model]) -> Self {
+    pub fn new(post: &posts::Model, tags: &[tags::Model], author: Option<&users::Model>) -> Self {
         let (published_on, published_iso) = dates(post);
         Self {
+            author: author.map(|u| u.name.clone()),
             title: post.title.clone(),
             url: post_url(&post.slug),
             body_html: post.body_html(),
@@ -135,8 +145,9 @@ pub fn index(
     v: &impl ViewRenderer,
     page: &query::PageResponse<posts::Model>,
     tags: &[Vec<tags::Model>],
+    authors: &[Option<users::Model>],
 ) -> Result<Response> {
-    let posts = PostSummary::list(&page.page, tags);
+    let posts = PostSummary::list(&page.page, tags, authors);
     format::render().view(
         v,
         "posts/index.html",
@@ -151,11 +162,16 @@ pub fn index(
 ///
 /// # Errors
 /// Template rendering errors.
-pub fn show(v: &impl ViewRenderer, post: &posts::Model, tags: &[tags::Model]) -> Result<Response> {
+pub fn show(
+    v: &impl ViewRenderer,
+    post: &posts::Model,
+    tags: &[tags::Model],
+    author: Option<&users::Model>,
+) -> Result<Response> {
     format::render().view(
         v,
         "posts/show.html",
-        data!({ "post": PostDetail::new(post, tags) }),
+        data!({ "post": PostDetail::new(post, tags, author) }),
     )
 }
 
@@ -168,6 +184,7 @@ pub fn tag(
     tag: &tags::Model,
     page: &query::PageResponse<posts::Model>,
     tags: &[Vec<tags::Model>],
+    authors: &[Option<users::Model>],
 ) -> Result<Response> {
     let base = format!("/tags/{}", tag.slug);
     format::render().view(
@@ -175,7 +192,7 @@ pub fn tag(
         "tags/show.html",
         data!({
             "tag": TagLink::from(tag),
-            "posts": PostSummary::list(&page.page, tags),
+            "posts": PostSummary::list(&page.page, tags, authors),
             "pagination": PaginationView::new(&page.meta, &base),
         }),
     )

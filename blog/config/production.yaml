@@ -118,3 +118,14 @@ auth:
     secret: <%= get_env(name="JWT_SECRET") %>
     # Token expiration time in seconds
     expiration: 604800 # 7 days
+    # Browser pages send the JWT in an httpOnly cookie (set by POST /login);
+    # API clients keep using `Authorization: Bearer`. Tried in this order.
+    location:
+      - from: Cookie
+        name: auth_token
+      - from: Bearer
+
+# App-specific settings (typed in src/data/settings.rs)
+settings:
+  base_url: <%= get_env(name="BASE_URL") %>
+  cookie_secure: true

@@ -12,7 +12,8 @@ pub async fn index(
 ) -> Result<Response> {
     let page = posts::Model::published_page(&ctx.db, pagination.page).await?;
     let tags = posts::Model::load_tags(&ctx.db, &page.page).await?;
-    views::posts::index(&v, &page, &tags)
+    let authors = posts::Model::load_authors(&ctx.db, &page.page).await?;
+    views::posts::index(&v, &page, &tags, &authors)
 }
 
 /// `GET /posts/{slug}` — a single published post, HTML 404 otherwise.
@@ -25,7 +26,8 @@ pub async fn show(
     match posts::Model::find_published_by_slug(&ctx.db, &slug).await {
         Ok(post) => {
             let tags = post.tags(&ctx.db).await?;
-            views::posts::show(&v, &post, &tags)
+            let author = post.author(&ctx.db).await?;
+            views::posts::show(&v, &post, &tags, author.as_ref())
         }
         Err(ModelError::EntityNotFound) => views::posts::not_found(&v),
         Err(e) => Err(e.into()),

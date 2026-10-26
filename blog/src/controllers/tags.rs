@@ -21,7 +21,8 @@ pub async fn show(
     };
     let page = posts::Model::published_page_for_tag(&ctx.db, &tag, pagination.page).await?;
     let post_tags = posts::Model::load_tags(&ctx.db, &page.page).await?;
-    views::posts::tag(&v, &tag, &page, &post_tags)
+    let authors = posts::Model::load_authors(&ctx.db, &page.page).await?;
+    views::posts::tag(&v, &tag, &page, &post_tags, &authors)
 }
 
 pub fn routes() -> Routes {

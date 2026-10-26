@@ -71,6 +71,27 @@ impl Authenticable for Model {
 }
 
 impl Model {
+    /// Email + password check for the HTML login form.
+    /// Same error for "no such user" and "wrong password" (no user enumeration).
+    ///
+    /// # Errors
+    /// `ModelError::Message("invalid credentials")`
+    pub async fn authenticate(
+        db: &DatabaseConnection,
+        email: &str,
+        password: &str,
+    ) -> ModelResult<Self> {
+        let invalid = || ModelError::Message("invalid credentials".to_string());
+        let user = Self::find_by_email(db, email.trim())
+            .await
+            .map_err(|_| invalid())?;
+        if user.verify_password(password) {
+            Ok(user)
+        } else {
+            Err(invalid())
+        }
+    }
+
     /// finds a user by the provided email
     ///
     /// # Errors

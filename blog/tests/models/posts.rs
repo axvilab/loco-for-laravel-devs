@@ -194,3 +194,26 @@ fn excerpt_skips_tables_and_truncates_on_word_boundary() {
     let e = posts::excerpt(&long, 22);
     assert_eq!(e, "word word word word…");
 }
+
+#[tokio::test]
+#[serial]
+async fn post_belongs_to_author() {
+    let boot = boot_test::<App>().await.unwrap();
+    seed::<App>(&boot.app_context).await.unwrap();
+    let db = &boot.app_context.db;
+
+    let post = posts::Model::find_by_slug(db, "hello-loco").await.unwrap();
+    let author = post
+        .author(db)
+        .await
+        .unwrap()
+        .expect("seeded post has an author");
+    assert_eq!(author.email, "user1@example.com");
+
+    let all = posts::Model::by_author(db, author.id).await.unwrap();
+    assert_eq!(all.len(), 2);
+    let authors = posts::Model::load_authors(db, &all).await.unwrap();
+    assert!(authors
+        .iter()
+        .all(|a| a.as_ref().map(|u| u.id) == Some(author.id)));
+}
