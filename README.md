@@ -39,6 +39,10 @@ docker compose up --build
 
 Catch up to any chapter with `git checkout step-06-admin` (any tag from the table).
 
+## Checks
+
+`./scripts/check.sh` runs clippy and the tests in Docker (no Rust on the host), then starts the production stack and checks that it answers. Pass tags to check them too: `./scripts/check.sh main step-06-admin`.
+
 Versions: Loco 1.2, SeaORM 2.0, Tera 2, Axum 0.8, Rust 1.97.
 
 ## License
@@ -47,4 +51,4 @@ MIT, see [LICENSE](LICENSE).
 
 ## Українською
 
-Повний блог на Loco 1.2, зібраний крок за кроком. Це код до книги **«Loco для Laravel-розробника»** (Vitaly Ax). Кожен розділ книги відповідає тегу з таблиці вище: `git checkout step-04-tags` повертає проєкт рівно у стан кінця розділу. Кожен тег збирається і проходить тести.
+Повний блог на Loco 1.2, зібраний крок за кроком. Це код до книги **«Loco для Laravel-розробника»** (Vitaly Ax). Кожен розділ книги відповідає тегу з таблиці вище: `git checkout step-04-tags` повертає проєкт рівно у стан кінця розділу. Кожен тег збирається і проходить тести. Перевірка в Docker: `./scripts/check.sh`.
