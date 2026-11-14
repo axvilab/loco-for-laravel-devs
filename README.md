@@ -1,6 +1,6 @@
 # loco-for-laravel-devs
 
-A complete blog built with [Loco](https://loco.rs) 1.2 (Rust), step by step. This is the companion code for the book **Loco for Laravel Developers** by Vitaly Ax.
+A complete blog built with [Loco](https://loco.rs) (Rust), step by step. This is the companion code for the book **Loco for Laravel Developers** by Vitaly Ax.
 
 Every step of the book is a git tag. Each one builds, passes `cargo test`, and is clean under `cargo clippy -- -D warnings`.
 
@@ -43,7 +43,7 @@ Catch up to any chapter with `git checkout step-06-admin` (any tag from the tabl
 
 `./scripts/check.sh` runs clippy and the tests in Docker (no Rust on the host), then starts the production stack and checks that it answers. Pass tags to check them too: `./scripts/check.sh main step-06-admin`.
 
-Versions: Loco 1.2, SeaORM 2.0, Tera 2, Axum 0.8, Rust 1.97.
+Versions: Loco 1.3.1 on `main`, SeaORM 2.0, Tera 2, Axum 0.8, Rust 1.97. The step tags are pinned to Loco 1.2.0, the version the book was written on; every step also builds and passes its tests on 1.3.1 (`cargo update -p loco-rs`).
 
 ## License
 
@@ -51,4 +51,4 @@ MIT, see [LICENSE](LICENSE).
 
 ## Українською
 
-Повний блог на Loco 1.2, зібраний крок за кроком. Це код до книги **«Loco для Laravel-розробника»** (Vitaly Ax). Кожен розділ книги відповідає тегу з таблиці вище: `git checkout step-04-tags` повертає проєкт рівно у стан кінця розділу. Кожен тег збирається і проходить тести. Перевірка в Docker: `./scripts/check.sh`.
+Повний блог на Loco, зібраний крок за кроком. Це код до книги **«Loco для Laravel-розробника»** (Vitaly Ax). Кожен розділ книги відповідає тегу з таблиці вище: `git checkout step-04-tags` повертає проєкт рівно у стан кінця розділу. Кожен тег збирається і проходить тести. Перевірка в Docker: `./scripts/check.sh`.
